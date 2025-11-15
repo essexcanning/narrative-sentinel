@@ -76,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoa
                 <SourcesUsed sources={sources} />
                 {narratives.length > 0 ? (
                     <>
-                        <div className="flex justify-between items-center bg-background p-3 rounded-lg border border-border">
+                        <div className="flex justify-between items-center">
                             <h3 className="text-lg font-semibold text-text-primary">{narratives.length} Narratives Detected</h3>
                             <div className="flex items-center space-x-4 text-sm">
                                 <span className="text-text-secondary hidden sm:inline">Sort by:</span>
@@ -107,7 +107,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoa
                         </div>
                     </>
                 ) : (
-                    <div className="text-center text-text-secondary bg-background p-8 rounded-lg border border-border">
+                    <div className="text-center text-text-secondary bg-background-secondary p-8 rounded-lg border border-border">
                         <h3 className="text-xl font-semibold text-text-primary">Analysis Complete</h3>
                         <p className="mt-2">No distinct narratives were detected. Try broadening your topic or time frame.</p>
                     </div>

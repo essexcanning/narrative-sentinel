@@ -16,7 +16,6 @@ const getRiskConfig = (score: number, classification?: string) => {
         return {
             dot: 'bg-critical',
             label: 'text-critical',
-            border: 'border-critical/30',
             bg: 'bg-critical/5 dark:bg-critical/10',
             text: 'text-critical'
         };
@@ -25,7 +24,6 @@ const getRiskConfig = (score: number, classification?: string) => {
         return {
             dot: 'bg-warning',
             label: 'text-warning',
-            border: 'border-warning/30',
             bg: 'bg-warning/5 dark:bg-warning/10',
             text: 'text-warning'
         };
@@ -33,7 +31,6 @@ const getRiskConfig = (score: number, classification?: string) => {
     return {
         dot: 'bg-success',
         label: 'text-success',
-        border: 'border-success/30',
         bg: 'bg-success/5 dark:bg-success/10',
         text: 'text-success'
     };
@@ -64,7 +61,7 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                 return narrative.dmmiReport ? (
                      <div className="space-y-3 text-sm">
                         <p>{narrative.dmmiReport.rationale}</p>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-border">
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t border-border">
                             <div><span className="font-semibold text-text-secondary">Intent:</span> {narrative.dmmiReport.intent}</div>
                             <div><span className="font-semibold text-text-secondary">Veracity:</span> {narrative.dmmiReport.veracity}</div>
                             <div className="col-span-2"><span className="font-semibold text-text-secondary">Success Probability:</span> {narrative.dmmiReport.successProbability}%</div>
@@ -123,7 +120,7 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
     return (
         <>
             {isBriefingModalOpen && <BriefingModal narrative={narrative} onClose={() => setIsBriefingModalOpen(false)} />}
-            <div className={clsx("rounded-xl border bg-background-card shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex flex-col", riskConfig.border)}>
+            <div className="rounded-lg bg-background-card shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
                 <div className="p-5">
                     <div className="flex justify-between items-start gap-4">
                         <div className="flex-1">
@@ -146,8 +143,8 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                 </div>
                 
                 {narrative.status === 'complete' && (
-                    <div className="border-t border-border mt-auto">
-                        <div className="px-5 pt-4">
+                    <div className="mt-auto">
+                        <div className="px-5 pt-2">
                             <div className="border-b border-border flex space-x-4">
                                 {(['DMMI Report', 'DISARM Analysis', 'Counters', 'Raw Posts'] as Tab[]).map(tab => (
                                     <button
@@ -168,8 +165,8 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                         <div className="p-5 min-h-[150px]">
                             {renderTabContent()}
                         </div>
-                        <div className="flex justify-between items-center gap-2 p-3 bg-background/50 border-t border-border rounded-b-xl">
-                            <div className="flex items-center gap-2">
+                        <div className="flex justify-between items-center gap-2 px-3 py-2 bg-background/50 rounded-b-lg">
+                            <div className="flex items-center gap-1">
                                 <button 
                                     onClick={() => setIsBriefingModalOpen(true)}
                                     className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-text-secondary hover:bg-background-hover hover:text-text-primary transition-colors"

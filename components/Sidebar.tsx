@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onAnalyze, isLoading, isOpen, 
 
   return (
     <aside className={clsx(
-      "bg-background border-r border-border flex flex-col h-full transition-all duration-300 ease-in-out",
+      "bg-background-secondary border-r border-border flex flex-col h-full transition-all duration-300 ease-in-out",
       isOpen ? "w-full md:w-80 lg:w-96 p-6" : "w-0 p-0 overflow-hidden"
     )}>
        <div className="flex items-center justify-between mb-6 min-w-[300px]">
@@ -134,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onAnalyze, isLoading, isOpen, 
             <button 
                 type="submit" 
                 disabled={isLoading}
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background focus:ring-primary disabled:bg-background-disabled disabled:text-text-disabled disabled:cursor-not-allowed transition-all"
+                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background-secondary focus:ring-primary disabled:bg-background-disabled disabled:text-text-disabled disabled:cursor-not-allowed transition-all"
             >
                 {isLoading ? (
                     <>

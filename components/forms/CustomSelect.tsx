@@ -20,7 +20,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({ id, label, value, on
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none bg-background-secondary border border-border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary transition-colors"
+          className="w-full appearance-none bg-background border border-border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary text-text-primary transition-colors"
         >
           {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>

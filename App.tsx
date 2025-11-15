@@ -17,7 +17,7 @@ const App: React.FC = () => {
   const [analysisPhase, setAnalysisPhase] = useState<'fetching' | 'clustering' | 'enriching' | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const [showWelcome, setShowWelcome] = useState<boolean>(true);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('light');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [taskforceItems, setTaskforceItems] = useState<TaskforceItem[]>([]);
@@ -156,7 +156,7 @@ const App: React.FC = () => {
         <Sidebar onAnalyze={handleAnalysis} isLoading={isLoading} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} currentPage={currentPage} setCurrentPage={setCurrentPage} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} theme={theme} setTheme={setTheme} />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background-secondary">
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background">
             {currentPage === 'dashboard' ? (
               <Dashboard 
                 narratives={narratives} 
@@ -169,7 +169,7 @@ const App: React.FC = () => {
               <TaskforceDashboard items={taskforceItems} />
             )}
           </main>
-          <footer className="flex-shrink-0 bg-background border-t border-border px-4 md:px-6 py-2 text-center text-xs text-text-secondary">
+          <footer className="flex-shrink-0 border-t border-border px-4 md:px-6 py-2 text-center text-xs text-text-secondary">
             Built with Gemini &bull; Open Source &bull; MIT License &bull; London Hackathon 2025
           </footer>
         </div>
