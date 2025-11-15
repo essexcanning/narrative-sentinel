@@ -13,12 +13,13 @@ interface DashboardProps {
   analysisPhase: 'fetching' | 'clustering' | 'enriching' | null;
   analysisSteps: AnalysisStep[];
   onAssignToTaskforce: (narrative: Narrative) => Promise<void>;
+  onSelectNarrative: (narrative: Narrative) => void;
 }
 
 type SortKey = 'riskScore' | 'title';
 type SortDirection = 'asc' | 'desc';
 
-export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoading, analysisPhase, analysisSteps, onAssignToTaskforce }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoading, analysisPhase, analysisSteps, onAssignToTaskforce, onSelectNarrative }) => {
     const [sortKey, setSortKey] = useState<SortKey>('riskScore');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -98,6 +99,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoa
                                   key={narrative.id} 
                                   narrative={narrative} 
                                   onAssignToTaskforce={onAssignToTaskforce}
+                                  onSelectNarrative={onSelectNarrative}
                                 />
                             ))}
                         </div>

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { AnalysisInput, Page } from '../types';
+import { AnalysisInput, Page, AnalysisHistoryItem } from '../types';
 import { COUNTRIES } from '../constants';
 import { FilterIcon, LoadingSpinner, CheckIcon, ChevronLeftIcon, DashboardIcon, ShieldExclamationIcon } from './icons/GeneralIcons';
 import { CustomSelect } from './forms/CustomSelect';
 import { CustomInput } from './forms/CustomInput';
 import { CustomDateInput } from './forms/CustomDateInput';
 import { CustomCheckbox } from './forms/CustomCheckbox';
+import { AnalysisHistory } from './AnalysisHistory';
 import clsx from 'clsx';
 
 interface SidebarProps {
@@ -15,6 +16,9 @@ interface SidebarProps {
   setIsOpen: (isOpen: boolean) => void;
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
+  analysisHistory: AnalysisHistoryItem[];
+  onRunHistory: (inputs: AnalysisInput) => void;
+  onClearHistory: () => void;
 }
 
 const NavButton: React.FC<{ icon: React.ElementType; label: string; isActive: boolean; onClick: () => void; }> = ({ icon: Icon, label, isActive, onClick }) => (
@@ -33,7 +37,17 @@ const NavButton: React.FC<{ icon: React.ElementType; label: string; isActive: bo
 );
 
 
-export const Sidebar: React.FC<SidebarProps> = ({ onAnalyze, isLoading, isOpen, setIsOpen, currentPage, setCurrentPage }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ 
+    onAnalyze, 
+    isLoading, 
+    isOpen, 
+    setIsOpen, 
+    currentPage, 
+    setCurrentPage,
+    analysisHistory,
+    onRunHistory,
+    onClearHistory 
+}) => {
   const [country, setCountry] = useState('Moldova');
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -85,6 +99,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onAnalyze, isLoading, isOpen, 
         <NavButton icon={DashboardIcon} label="Dashboard" isActive={currentPage === 'dashboard'} onClick={() => setCurrentPage('dashboard')} />
         <NavButton icon={ShieldExclamationIcon} label="Taskforce" isActive={currentPage === 'taskforce'} onClick={() => setCurrentPage('taskforce')} />
       </nav>
+
+      <AnalysisHistory 
+        history={analysisHistory}
+        onRun={onRunHistory}
+        onClear={onClearHistory}
+        isLoading={isLoading}
+      />
 
       <div className="flex items-center justify-between mb-4 pt-6 border-t border-border min-w-[300px]">
         <div className="flex items-center">

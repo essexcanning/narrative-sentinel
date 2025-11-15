@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckIcon, AlertIcon, LoadingSpinner } from './icons/GeneralIcons';
+import { CheckIcon, AlertIcon } from './icons/GeneralIcons';
 import { Narrative } from '../types';
 import clsx from 'clsx';
 
@@ -13,11 +13,39 @@ export const ProgressRing: React.FC<ProgressRingProps> = ({ status }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     
+    // Custom spinner for 'pending' state
+    if (status === 'pending') {
+        return (
+            <div className="relative" style={{ width: size, height: size }}>
+                <svg className="animate-spin" width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                    <circle
+                        className="text-border opacity-25"
+                        strokeWidth={strokeWidth}
+                        stroke="currentColor"
+                        fill="transparent"
+                        r={radius}
+                        cx={size / 2}
+                        cy={size / 2}
+                    />
+                    <circle
+                        className="text-primary"
+                        strokeWidth={strokeWidth}
+                        strokeDasharray={circumference}
+                        strokeDashoffset={circumference * 0.75} // Creates a 90-degree arc
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r={radius}
+                        cx={size / 2}
+                        cy={size / 2}
+                        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                    />
+                </svg>
+            </div>
+        );
+    }
+    
     const config = {
-        pending: {
-            icon: <LoadingSpinner className="h-5 w-5 text-primary" />,
-            color: 'text-primary'
-        },
         complete: {
             icon: <CheckIcon className="h-5 w-5 text-success" />,
             color: 'text-success'

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Narrative, Post } from '../types';
 import { ShareIcon, DownloadIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner } from './icons/GeneralIcons';
 import { ProgressRing } from './ProgressRing';
 import { Sparkline } from './Sparkline';
 import { BriefingModal } from './BriefingModal';
 import clsx from 'clsx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface NarrativeCardProps {
   narrative: Narrative;
   onAssignToTaskforce: (narrative: Narrative) => Promise<void>;
+  onSelectNarrative: (narrative: Narrative) => void;
 }
 
 const getRiskConfig = (score: number, classification?: string) => {
@@ -38,13 +41,16 @@ const getRiskConfig = (score: number, classification?: string) => {
 
 type Tab = 'DMMI Report' | 'DISARM Analysis' | 'Counters' | 'Raw Posts';
 
-export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssignToTaskforce }) => {
+export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssignToTaskforce, onSelectNarrative }) => {
     const [activeTab, setActiveTab] = useState<Tab>('DMMI Report');
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
     const riskConfig = getRiskConfig(narrative.riskScore, narrative.dmmiReport?.classification);
 
-    const handleAssign = async () => {
+    const handleAssign = async (e: React.MouseEvent) => {
+        e.stopPropagation();
         setIsAssigning(true);
         try {
             await onAssignToTaskforce(narrative);
@@ -52,6 +58,49 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
             console.error("Assignment failed in card:", error);
         } finally {
             setIsAssigning(false);
+        }
+    };
+
+    const handleCardClick = () => {
+        if (narrative.status === 'complete') {
+            onSelectNarrative(narrative);
+        }
+    };
+
+    const handleActionsClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+    };
+
+    const handleExportPdf = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!cardRef.current) return;
+        setIsExporting(true);
+        try {
+            const element = cardRef.current;
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#ffffff',
+                useCORS: true,
+                logging: false,
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'px',
+                format: [canvas.width, canvas.height]
+            });
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+            
+            const fileName = `${narrative.title.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '-')}-summary.pdf`;
+            pdf.save(fileName);
+
+        } catch (error) {
+            console.error("Failed to export PDF from card:", error);
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -120,7 +169,14 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
     return (
         <>
             {isBriefingModalOpen && <BriefingModal narrative={narrative} onClose={() => setIsBriefingModalOpen(false)} />}
-            <div className="rounded-lg bg-background-card shadow-card hover:shadow-card-hover transition-shadow flex flex-col">
+            <div 
+                ref={cardRef}
+                className={clsx(
+                    "rounded-lg bg-background-card shadow-card hover:shadow-card-hover transition-shadow flex flex-col",
+                    narrative.status === 'complete' && 'cursor-pointer'
+                )}
+                onClick={handleCardClick}
+            >
                 <div className="p-5">
                     <div className="flex justify-between items-start gap-4">
                         <div className="flex-1">
@@ -143,13 +199,13 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                 </div>
                 
                 {narrative.status === 'complete' && (
-                    <div className="mt-auto">
+                    <div className="mt-auto" onClick={handleActionsClick}>
                         <div className="px-5 pt-2">
                             <div className="border-b border-border flex space-x-4">
                                 {(['DMMI Report', 'DISARM Analysis', 'Counters', 'Raw Posts'] as Tab[]).map(tab => (
                                     <button
                                         key={tab}
-                                        onClick={() => setActiveTab(tab)}
+                                        onClick={(e) => { e.stopPropagation(); setActiveTab(tab); }}
                                         className={clsx(
                                             "py-2 px-1 text-sm font-medium border-b-2 transition-colors",
                                             activeTab === tab 
@@ -168,7 +224,7 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                         <div className="flex justify-between items-center gap-2 px-3 py-2 bg-background/50 rounded-b-lg">
                             <div className="flex items-center gap-1">
                                 <button 
-                                    onClick={() => setIsBriefingModalOpen(true)}
+                                    onClick={(e) => { e.stopPropagation(); setIsBriefingModalOpen(true); }}
                                     className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-md text-text-secondary hover:bg-background-hover hover:text-text-primary transition-colors"
                                 >
                                     <MegaphoneIcon className="h-4 w-4" />
@@ -184,8 +240,15 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                                 </button>
                             </div>
                             <div className="flex items-center">
-                                <button className="p-2 text-text-secondary hover:text-text-primary transition-colors" title="Share"><ShareIcon className="h-4 w-4" /></button>
-                                <button className="p-2 text-text-secondary hover:text-text-primary transition-colors" title="Export PDF"><DownloadIcon className="h-4 w-4" /></button>
+                                <button onClick={(e) => e.stopPropagation()} className="p-2 text-text-secondary hover:text-text-primary transition-colors" title="Share"><ShareIcon className="h-4 w-4" /></button>
+                                <button 
+                                    onClick={handleExportPdf}
+                                    disabled={isExporting}
+                                    className="p-2 text-text-secondary hover:text-text-primary transition-colors disabled:opacity-50 disabled:cursor-wait" 
+                                    title="Export PDF"
+                                >
+                                    {isExporting ? <LoadingSpinner className="h-4 w-4" /> : <DownloadIcon className="h-4 w-4" />}
+                                </button>
                             </div>
                         </div>
                     </div>

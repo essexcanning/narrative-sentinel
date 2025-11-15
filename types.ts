@@ -1,5 +1,5 @@
 export type Theme = 'light' | 'dark';
-export type Page = 'dashboard' | 'taskforce';
+export type Page = 'dashboard' | 'taskforce' | 'detail';
 
 export interface User {
   id: string;
@@ -80,4 +80,10 @@ export interface AnalysisStep {
   id: string;
   label: string;
   status: 'pending' | 'in-progress' | 'done' | 'error';
+}
+
+export interface AnalysisHistoryItem {
+  id: string;
+  timestamp: string;
+  inputs: AnalysisInput;
 }

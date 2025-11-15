@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeModal } from './components/WelcomeModal';
-import { AnalysisInput, Narrative, Post, SearchSource, Theme, Page, TaskforceItem, AnalysisStep, User } from './types';
+import { AnalysisInput, Narrative, Post, SearchSource, Theme, Page, TaskforceItem, AnalysisStep, User, AnalysisHistoryItem } from './types';
 import { fetchRealtimePosts, detectAndClusterNarratives, enrichNarrative, generateTaskforceBrief } from './services/geminiService';
 import { fetchTwitterPosts } from './services/twitterService';
 import { Header } from './components/Header';
@@ -10,6 +10,7 @@ import { Toast, ToastData } from './components/Toast';
 import { generateId } from './utils/generateId';
 import { TaskforceDashboard } from './components/TaskforceDashboard';
 import { LoginModal } from './components/LoginModal';
+import { NarrativeDetail } from './components/NarrativeDetail';
 
 const mockUsers: User[] = [
     { id: 'u1', name: 'Alex Johnson', initials: 'AJ' },
@@ -30,18 +31,50 @@ const App: React.FC = () => {
   const [taskforceItems, setTaskforceItems] = useState<TaskforceItem[]>([]);
   const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [selectedNarrative, setSelectedNarrative] = useState<Narrative | null>(null);
+  const [analysisHistory, setAnalysisHistory] = useState<AnalysisHistoryItem[]>([]);
   
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
   }, [theme]);
+  
+  useEffect(() => {
+    try {
+        const storedHistory = localStorage.getItem('openNarrativeHistory');
+        if (storedHistory) {
+            setAnalysisHistory(JSON.parse(storedHistory));
+        }
+    } catch (error) {
+        console.error("Failed to load analysis history from localStorage", error);
+    }
+  }, []);
+
 
   const addToast = useCallback((toast: Omit<ToastData, 'id'>) => {
     setToasts(currentToasts => [...currentToasts, { ...toast, id: generateId() }]);
   }, []);
 
   const handleAnalysis = useCallback(async (inputs: AnalysisInput) => {
+    // Add to history right away, move to top if it's a re-run
+    const newHistoryItem: AnalysisHistoryItem = {
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        inputs,
+    };
+    setAnalysisHistory(prev => {
+        const filtered = prev.filter(item => JSON.stringify(item.inputs) !== JSON.stringify(inputs));
+        const updated = [newHistoryItem, ...filtered].slice(0, 20); // Keep last 20
+        try {
+            localStorage.setItem('openNarrativeHistory', JSON.stringify(updated));
+        } catch (error) {
+            console.error("Failed to save analysis history to localStorage", error);
+        }
+        return updated;
+    });
+
     setIsLoading(true);
+    setSelectedNarrative(null); // Clear detail view on new analysis
     setCurrentPage('dashboard');
     setNarratives([]);
     setSources([]);
@@ -183,6 +216,8 @@ const App: React.FC = () => {
     setAnalysisSteps([]);
     setCurrentPage('dashboard');
     setShowWelcome(true);
+    setSelectedNarrative(null);
+    setAnalysisHistory([]);
   };
 
   const handleWelcomeAcknowledge = () => {
@@ -193,9 +228,56 @@ const App: React.FC = () => {
     setToasts(currentToasts => currentToasts.filter(toast => toast.id !== id));
   };
   
+  const handleSelectNarrative = (narrative: Narrative) => {
+    setSelectedNarrative(narrative);
+  };
+
+  const handleBackToDashboard = () => {
+    setSelectedNarrative(null);
+  };
+  
+  const handleClearHistory = () => {
+      setAnalysisHistory([]);
+      try {
+          localStorage.removeItem('openNarrativeHistory');
+          addToast({ type: 'info', message: 'Analysis history cleared.' });
+      } catch (e) {
+          console.error('Failed to clear history:', e);
+          addToast({ type: 'error', message: 'Could not clear history.' });
+      }
+  };
+
+
   if (!currentUser) {
     return <LoginModal users={mockUsers} onLogin={handleLogin} />;
   }
+  
+  const renderPage = () => {
+    if (selectedNarrative) {
+        return <NarrativeDetail 
+                    narrative={selectedNarrative}
+                    onBack={handleBackToDashboard}
+                    onAssignToTaskforce={handleAssignToTaskforce}
+                />;
+    }
+    switch (currentPage) {
+        case 'dashboard':
+            return <Dashboard 
+                        narratives={narratives} 
+                        sources={sources} 
+                        isLoading={isLoading} 
+                        analysisPhase={analysisPhase}
+                        analysisSteps={analysisSteps}
+                        onAssignToTaskforce={handleAssignToTaskforce}
+                        onSelectNarrative={handleSelectNarrative}
+                    />;
+        case 'taskforce':
+            return <TaskforceDashboard items={taskforceItems} />;
+        default:
+            return null;
+    }
+  };
+
 
   return (
     <>
@@ -206,22 +288,21 @@ const App: React.FC = () => {
       </div>
       {showWelcome && <WelcomeModal onAcknowledge={handleWelcomeAcknowledge} />}
       <div className={`flex h-screen bg-background text-text-primary font-sans transition-all duration-300 ${showWelcome ? 'blur-md' : ''}`}>
-        <Sidebar onAnalyze={handleAnalysis} isLoading={isLoading} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+        <Sidebar 
+            onAnalyze={handleAnalysis} 
+            isLoading={isLoading} 
+            isOpen={isSidebarOpen} 
+            setIsOpen={setIsSidebarOpen} 
+            currentPage={currentPage} 
+            setCurrentPage={setCurrentPage}
+            analysisHistory={analysisHistory}
+            onRunHistory={handleAnalysis}
+            onClearHistory={handleClearHistory}
+        />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} theme={theme} setTheme={setTheme} currentUser={currentUser} onLogout={handleLogout} />
           <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto bg-background">
-            {currentPage === 'dashboard' ? (
-              <Dashboard 
-                narratives={narratives} 
-                sources={sources} 
-                isLoading={isLoading} 
-                analysisPhase={analysisPhase}
-                analysisSteps={analysisSteps}
-                onAssignToTaskforce={handleAssignToTaskforce}
-              />
-            ) : (
-              <TaskforceDashboard items={taskforceItems} />
-            )}
+            {renderPage()}
           </main>
           <footer className="flex-shrink-0 border-t border-border px-4 md:px-6 py-2 text-center text-xs text-text-secondary">
             Fueled by some magic from Gemini &bull; Open Source &bull; MIT License
