@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Narrative, SearchSource } from '../types';
+import { Narrative, SearchSource, AnalysisStep } from '../types';
 import { NarrativeCard } from './NarrativeCard';
 import { SourcesUsed } from './SourcesUsed';
 import { SortAscendingIcon, SortDescendingIcon, SparklesIcon } from './icons/GeneralIcons';
-import { NarrativeCardSkeleton } from './NarrativeCardSkeleton';
+import { AnalysisInProgress } from './AnalysisInProgress';
 import clsx from 'clsx';
 
 interface DashboardProps {
@@ -11,13 +11,14 @@ interface DashboardProps {
   sources: SearchSource[];
   isLoading: boolean;
   analysisPhase: 'fetching' | 'clustering' | 'enriching' | null;
+  analysisSteps: AnalysisStep[];
   onAssignToTaskforce: (narrative: Narrative) => Promise<void>;
 }
 
 type SortKey = 'riskScore' | 'title';
 type SortDirection = 'asc' | 'desc';
 
-export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoading, analysisPhase, onAssignToTaskforce }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoading, analysisPhase, analysisSteps, onAssignToTaskforce }) => {
     const [sortKey, setSortKey] = useState<SortKey>('riskScore');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -46,17 +47,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoa
 
     const SortIcon = sortDirection === 'asc' ? SortAscendingIcon : SortDescendingIcon;
     const hasResults = narratives.length > 0 || sources.length > 0;
+    const isInitialLoading = isLoading && (analysisPhase === 'fetching' || analysisPhase === 'clustering');
+
 
     const renderContent = () => {
-        if (isLoading) {
-            const skeletonCount = analysisPhase === 'enriching' ? narratives.length : 6;
-            return (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {Array.from({ length: skeletonCount }).map((_, i) => (
-                        <NarrativeCardSkeleton key={i} />
-                    ))}
-                </div>
-            );
+        if (isInitialLoading) {
+            return <AnalysisInProgress steps={analysisSteps} />;
         }
 
         if (!hasResults) {

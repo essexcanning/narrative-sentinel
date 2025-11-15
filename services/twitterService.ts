@@ -1,12 +1,24 @@
 import { AnalysisInput, Post, SearchSource } from '../types';
 
 // Define the structure of the Twitter API v2 response for type safety
+interface TwitterMedia {
+    media_key: string;
+    type: 'photo' | 'video' | 'animated_gif';
+    url?: string; // For photos
+    preview_image_url?: string; // For videos
+}
+
+interface TweetAttachment {
+    media_keys: string[];
+}
+
 interface TwitterApiResponse {
     data?: {
         id: string;
         text: string;
         created_at: string;
         author_id: string;
+        attachments?: TweetAttachment;
     }[];
     includes?: {
         users?: {
@@ -14,12 +26,14 @@ interface TwitterApiResponse {
             name: string;
             username: string;
         }[];
+        media?: TwitterMedia[];
     };
     meta: {
         result_count: number;
     };
     errors?: any[];
 }
+
 
 /**
  * Fetches recent tweets based on the analysis inputs.
@@ -38,14 +52,23 @@ export const fetchTwitterPosts = async (inputs: AnalysisInput): Promise<{ posts:
     const encodedQuery = encodeURIComponent(query);
     const countryCode = await getCountryCode(inputs.country); // Helper to get 2-letter code
     
-    // The endpoint for your backend proxy.
-    const apiUrl = `/api/twitter-search?query=${encodedQuery}&country=${countryCode}`;
+    const twitterFields = 'tweet.fields=created_at,attachments&expansions=author_id,attachments.media_keys&user.fields=name,username&media.fields=type,url,preview_image_url';
+    const apiUrl = `/api/twitter-search?query=${encodedQuery}&country=${countryCode}&fields=${encodeURIComponent(twitterFields)}`;
 
     try {
         const response = await fetch(apiUrl);
+        
+        // Specifically handle 404 for missing dev proxy without throwing a critical error
+        if (response.status === 404) {
+            console.warn(
+                "Twitter API proxy returned a 404. This is expected if the backend proxy is not set up. Skipping Twitter source."
+            );
+            return { posts: [], sources: [] };
+        }
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `Twitter API proxy failed with status ${response.status}`);
+            const errorData = await response.text(); // Use .text() in case of non-JSON error response
+            throw new Error(`Twitter API proxy failed with status ${response.status}: ${errorData}`);
         }
         
         const data: TwitterApiResponse = await response.json();
@@ -56,16 +79,38 @@ export const fetchTwitterPosts = async (inputs: AnalysisInput): Promise<{ posts:
         }
 
         const users = new Map(data.includes?.users?.map(u => [u.id, u]));
-        const posts: Post[] = (data.data || []).map(tweet => {
+        const media = new Map(data.includes?.media?.map(m => [m.media_key, m]));
+
+        const posts: Post[] = (data.data || []).map((tweet) => {
             const author = users.get(tweet.author_id);
             const tweetUrl = `https://twitter.com/${author?.username || 'anyuser'}/status/${tweet.id}`;
+            let imageUrl: string | undefined;
+            let videoUrl: string | undefined;
+
+            if (tweet.attachments?.media_keys && tweet.attachments.media_keys.length > 0) {
+                const mediaKey = tweet.attachments.media_keys[0];
+                const mediaObject = media.get(mediaKey);
+
+                if (mediaObject) {
+                    if (mediaObject.type === 'photo' && mediaObject.url) {
+                        imageUrl = mediaObject.url;
+                    } else if (mediaObject.type === 'video' && mediaObject.preview_image_url) {
+                        // We use the thumbnail as the imageUrl for videos, as we analyze the image.
+                        imageUrl = mediaObject.preview_image_url;
+                        videoUrl = tweetUrl; // The video itself is at the tweet URL
+                    }
+                }
+            }
+
             return {
                 id: `twitter_${tweet.id}`,
-                source: 'Twitter',
+                source: 'Twitter' as const,
                 author: author ? `${author.name} (@${author.username})` : 'Unknown User',
                 content: tweet.text,
                 timestamp: new Date(tweet.created_at).toISOString().split('T')[0],
                 link: tweetUrl,
+                imageUrl,
+                videoUrl,
             };
         });
 
@@ -77,13 +122,13 @@ export const fetchTwitterPosts = async (inputs: AnalysisInput): Promise<{ posts:
         return { posts, sources };
 
     } catch (error) {
-        console.error("Error fetching from Twitter proxy:", error);
-        // For development, if the proxy doesn't exist, we can return empty arrays to avoid crashing.
-        if (error instanceof TypeError) { // Often indicates a network error like the endpoint not existing
-             console.warn("Could not connect to /api/twitter-search. Is your backend proxy running? Returning empty results for Twitter.");
-             return { posts: [], sources: [] };
-        }
-        throw error; // Re-throw other errors
+        console.error("Error fetching or parsing data from Twitter proxy:", error);
+        // For development, if the proxy doesn't exist or returns an error (e.g., non-JSON),
+        // we return empty arrays to avoid crashing the entire analysis pipeline.
+        console.warn(
+            "Could not process Twitter data. This could be a network issue or an invalid response from the proxy. Returning empty results for Twitter."
+        );
+        return { posts: [], sources: [] };
     }
 };
 
@@ -120,8 +165,8 @@ example for Vercel, but the logic is similar for Netlify, Google Cloud Functions
     - Name: TWITTER_BEARER_TOKEN,  Value: [Your Twitter Bearer Token]
 
 5.  Deploy the code below as a serverless function at the path `/api/twitter-search`.
-    The frontend now sends a generic query to discover trending topics, which this
-    proxy will pass to the Twitter API along with a country filter.
+    The frontend now sends a generic query and specific field requirements, which this
+    proxy will pass to the Twitter API.
 
 --------------------------------------------------------------------------------
 // File: /api/twitter-search.js (Example using Vercel Edge Functions syntax)
@@ -134,6 +179,7 @@ export default async function handler(request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('query');
   const country = searchParams.get('country');
+  const fields = searchParams.get('fields'); // Frontend now passes required fields
 
   if (!query) {
     return new Response(JSON.stringify({ error: 'Query parameter is required' }), {
@@ -155,7 +201,8 @@ export default async function handler(request) {
     });
   }
 
-  const twitterApiUrl = `https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(fullQuery)}&tweet.fields=created_at&expansions=author_id&user.fields=name,username&max_results=50`;
+  const twitterApiParams = fields || 'tweet.fields=created_at&expansions=author_id&user.fields=name,username';
+  const twitterApiUrl = `https://api.twitter.com/2/tweets/search/recent?query=${encodeURIComponent(fullQuery)}&${twitterApiParams}&max_results=50`;
 
   try {
     const twitterResponse = await fetch(twitterApiUrl, {

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Dashboard } from './components/Dashboard';
 import { WelcomeModal } from './components/WelcomeModal';
-import { AnalysisInput, Narrative, Post, SearchSource, Theme, Page, TaskforceItem } from './types';
+import { AnalysisInput, Narrative, Post, SearchSource, Theme, Page, TaskforceItem, AnalysisStep } from './types';
 import { fetchRealtimePosts, detectAndClusterNarratives, enrichNarrative, generateTaskforceBrief } from './services/geminiService';
 import { fetchTwitterPosts } from './services/twitterService';
 import { Header } from './components/Header';
@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [taskforceItems, setTaskforceItems] = useState<TaskforceItem[]>([]);
+  const [analysisSteps, setAnalysisSteps] = useState<AnalysisStep[]>([]);
   
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
@@ -33,79 +34,100 @@ const App: React.FC = () => {
 
   const handleAnalysis = useCallback(async (inputs: AnalysisInput) => {
     setIsLoading(true);
-    setAnalysisPhase('fetching');
     setCurrentPage('dashboard');
     setNarratives([]);
     setSources([]);
-    addToast({ type: 'info', message: 'Starting analysis... Discovering narratives.' });
+    
+    const initialSteps: AnalysisStep[] = [];
+    if (inputs.sources.includes('Google News / Search')) {
+      initialSteps.push({ id: 'google', label: `Performing Google News/Search scan for ${inputs.country}...`, status: 'pending' });
+    }
+    if (inputs.sources.includes('X / Twitter')) {
+      initialSteps.push({ id: 'twitter', label: 'Scanning X/Twitter...', status: 'pending' });
+    }
+    initialSteps.push({ id: 'clustering', label: 'Clustering narratives...', status: 'pending' });
+    setAnalysisSteps(initialSteps);
+
+    const updateStepStatus = (id: string, status: AnalysisStep['status'], label?: string) => {
+        setAnalysisSteps(prevSteps => prevSteps.map(step => step.id === id ? { ...step, status, label: label || step.label } : step));
+    };
 
     try {
-      const dataPromises: Promise<{ posts: Post[], sources: SearchSource[] }>[] = [];
-
-      if (inputs.sources.includes('Google News / Search')) {
-        dataPromises.push(fetchRealtimePosts(inputs));
-      }
-      if (inputs.sources.includes('X / Twitter')) {
-        dataPromises.push(fetchTwitterPosts(inputs));
-      }
-
-      const results = await Promise.allSettled(dataPromises);
-      
       let combinedPosts: Post[] = [];
       let combinedSources: SearchSource[] = [];
       
-      results.forEach(result => {
-        if (result.status === 'fulfilled') {
-          combinedPosts.push(...result.value.posts);
-          combinedSources.push(...result.value.sources);
-        } else {
-          console.error(`Failed to fetch from a source:`, result.reason);
-          addToast({ type: 'error', message: 'Failed to fetch data from a source.' });
+      setAnalysisPhase('fetching');
+
+      if (inputs.sources.includes('Google News / Search')) {
+        updateStepStatus('google', 'in-progress');
+        try {
+          const result = await fetchRealtimePosts(inputs);
+          combinedPosts.push(...result.posts);
+          combinedSources.push(...result.sources);
+          updateStepStatus('google', 'done', `Google News/Search scan complete.`);
+        } catch (e) {
+            updateStepStatus('google', 'error', `Google News/Search scan failed.`);
+            throw e;
         }
-      });
+      }
       
+      if (inputs.sources.includes('X / Twitter')) {
+         updateStepStatus('twitter', 'in-progress');
+         try {
+            const result = await fetchTwitterPosts(inputs);
+            combinedPosts.push(...result.posts);
+            combinedSources.push(...result.sources);
+            updateStepStatus('twitter', 'done', 'X/Twitter scan complete.');
+         } catch (e) {
+            updateStepStatus('twitter', 'error', 'X/Twitter scan failed.');
+            throw e;
+         }
+      }
+
       const uniqueSources = Array.from(new Map(combinedSources.map(s => [s.uri, s])).values());
       setSources(uniqueSources);
 
       if (combinedPosts.length === 0) {
         addToast({ type: 'warning', message: 'No significant posts found for the given criteria.' });
         setNarratives([]);
+        setIsLoading(false);
+        setAnalysisPhase(null);
+        return;
+      }
+      
+      setAnalysisPhase('clustering');
+      updateStepStatus('clustering', 'in-progress');
+      const initialNarratives = await detectAndClusterNarratives(combinedPosts, `trending narratives in ${inputs.country}`);
+      
+      if (!initialNarratives || initialNarratives.length === 0) {
+        updateStepStatus('clustering', 'done', 'Clustering complete. No distinct narratives found.');
+        addToast({ type: 'warning', message: 'Could not detect distinct narratives.' });
+        setNarratives([]);
       } else {
-        setAnalysisPhase('clustering');
-        addToast({ type: 'info', message: `Found ${combinedPosts.length} posts. Clustering narratives...` });
-        const initialNarratives = await detectAndClusterNarratives(combinedPosts, `trending narratives in ${inputs.country}`);
+        updateStepStatus('clustering', 'done', `Clustering complete. Found ${initialNarratives.length} narratives.`);
+        const narrativesWithPosts = initialNarratives.map(n => ({ 
+          ...n, 
+          status: 'pending' as const, 
+          posts: combinedPosts.filter(p => n.postIds.includes(p.id)) 
+        }));
+        setNarratives(narrativesWithPosts);
         
-        if (!initialNarratives || initialNarratives.length === 0) {
-          addToast({ type: 'warning', message: 'Could not detect distinct narratives.' });
-          setNarratives([]);
-        } else {
-          const narrativesWithPosts = initialNarratives.map(n => ({ 
-            ...n, 
-            status: 'pending' as const, 
-            posts: combinedPosts.filter(p => n.postIds.includes(p.id)) 
-          }));
-          setNarratives(narrativesWithPosts);
-          
-          setAnalysisPhase('enriching');
-          addToast({ type: 'info', message: `Detected ${initialNarratives.length} narratives. Starting deep analysis...` });
+        setIsLoading(false); // Stop main loading, show pending cards
+        setAnalysisPhase('enriching');
+        addToast({ type: 'info', message: `Detected ${initialNarratives.length} narratives. Starting deep analysis...` });
 
-          const enrichmentPromises = narrativesWithPosts.map(narrative => {
-             return enrichNarrative(narrative, narrative.posts)
-              .then(enriched => {
-                setNarratives(prev => prev.map(n => n.id === enriched.id ? { ...enriched, posts: narrative.posts, status: 'complete' } : n));
-                return enriched;
-              })
-              .catch(err => {
+        // Sequentially enrich narratives
+        for (const narrative of narrativesWithPosts) {
+            try {
+                const enriched = await enrichNarrative(narrative, narrative.posts);
+                setNarratives(prev => prev.map(n => n.id === enriched.id ? { ...enriched, status: 'complete' } : n));
+            } catch (err) {
                 console.error(`Failed to enrich narrative ${narrative.id}:`, err);
                 setNarratives(prev => prev.map(n => n.id === narrative.id ? { ...n, status: 'error' } : n));
                 addToast({type: 'error', message: `Analysis failed for narrative: "${narrative.title.substring(0, 20)}..."`})
-                return null;
-              });
-          });
-          
-          await Promise.all(enrichmentPromises);
-          addToast({ type: 'success', message: 'Analysis complete.' });
+            }
         }
+        addToast({ type: 'success', message: 'Analysis complete.' });
       }
 
     } catch (err) {
@@ -113,10 +135,14 @@ const App: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
       addToast({ type: 'error', message: `Analysis failed: ${errorMessage}` });
     } finally {
-      setIsLoading(false);
-      setAnalysisPhase(null);
+      if (analysisPhase !== 'enriching') {
+          setIsLoading(false);
+          setAnalysisPhase(null);
+      } else {
+          setAnalysisPhase(null); // Enrichment is done.
+      }
     }
-  }, [addToast]);
+  }, [addToast, analysisPhase]);
 
   const handleAssignToTaskforce = useCallback(async (narrative: Narrative) => {
     addToast({ type: 'info', message: `Assigning "${narrative.title.substring(0, 20)}..." to taskforce.` });
@@ -163,6 +189,7 @@ const App: React.FC = () => {
                 sources={sources} 
                 isLoading={isLoading} 
                 analysisPhase={analysisPhase}
+                analysisSteps={analysisSteps}
                 onAssignToTaskforce={handleAssignToTaskforce}
               />
             ) : (
@@ -170,7 +197,7 @@ const App: React.FC = () => {
             )}
           </main>
           <footer className="flex-shrink-0 border-t border-border px-4 md:px-6 py-2 text-center text-xs text-text-secondary">
-            Built with Gemini &bull; Open Source &bull; MIT License &bull; London Hackathon 2025
+            Fueled by some magic from Gemini &bull; Open Source &bull; MIT License
           </footer>
         </div>
       </div>

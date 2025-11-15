@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Narrative, Post, DMMIReport, DisarmAnalysis, CounterOpportunity, AnalysisInput, SearchSource } from '../types';
 import { generateId } from "../utils/generateId";
+import { urlToBase64 } from "../utils/mediaUtils";
 
 const API_KEY = process.env.API_KEY;
 
@@ -9,6 +10,54 @@ if (!API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY! });
+
+// Helper to robustly extract JSON from a string that might contain markdown or other text
+function extractJson(text: string): any {
+    // Attempt to find JSON within a markdown code block first
+    const markdownMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+        try {
+            return JSON.parse(markdownMatch[1].trim());
+        } catch (e) {
+            console.warn("Could not parse JSON from markdown block, attempting to find JSON in the full string.", e);
+        }
+    }
+
+    // If no markdown, or if parsing markdown failed, find the first and last bracket/brace
+    const firstBracket = text.indexOf('[');
+    const firstBrace = text.indexOf('{');
+    
+    let startIndex = -1;
+    if (firstBracket === -1 && firstBrace === -1) {
+        throw new Error("No JSON object or array found in the response.");
+    }
+    
+    if (firstBracket === -1) {
+        startIndex = firstBrace;
+    } else if (firstBrace === -1) {
+        startIndex = firstBracket;
+    } else {
+        startIndex = Math.min(firstBracket, firstBrace);
+    }
+    
+    const lastBracket = text.lastIndexOf(']');
+    const lastBrace = text.lastIndexOf('}');
+    const endIndex = Math.max(lastBracket, lastBrace);
+    
+    if (endIndex === -1) {
+         throw new Error("Could not find a valid end for the JSON object or array.");
+    }
+
+    const jsonString = text.substring(startIndex, endIndex + 1);
+    
+    try {
+        return JSON.parse(jsonString);
+    } catch(e) {
+        console.error("Failed to parse extracted JSON substring:", { jsonString, originalText: text });
+        throw new Error("Failed to extract and parse valid JSON from the model's response.");
+    }
+}
+
 
 // Schemas for structured responses
 const narrativeSchema = {
@@ -64,14 +113,40 @@ const enrichmentSchema = {
   required: ["dmmiReport", "disarmAnalysis", "counterOpportunities"]
 };
 
-export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts: Post[], sources: SearchSource[] }> => {
+export const analyzeImageContent = async (base64Data: string, mimeType: string): Promise<string> => {
     const model = 'gemini-2.5-flash';
+    const prompt = "You are an expert in visual intelligence. Analyze this image and provide a concise, factual description of what it depicts. Focus on key subjects, actions, and any visible text or symbols. This description will be used to understand its role in an online narrative.";
+
+    try {
+        const imagePart = {
+            inlineData: {
+                mimeType,
+                data: base64Data,
+            },
+        };
+        const textPart = { text: prompt };
+        const response = await ai.models.generateContent({
+            model,
+            contents: { parts: [imagePart, textPart] },
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error in analyzeImageContent:", error);
+        return ""; // Return empty string on failure
+    }
+};
+
+
+export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts: Post[], sources: SearchSource[] }> => {
+    const model = 'gemini-flash-lite-latest';
     const prompt = `
         You are a research assistant. Your task is to discover the most significant online content from "${inputs.country}" within the timeframe of ${inputs.timeFrame.start} to ${inputs.timeFrame.end}.
         Based on the user's selected Country and Time Frame, perform a Google search to find the top 5-10 most significant, controversial, or widely discussed news stories, events, and public discussions in that country.
+        For each story, find a relevant article. From the article, extract a summary, author, timestamp, and link.
+        CRITICALLY: Also extract the URL of the main representative image (imageUrl) or video (videoUrl) from the article if one exists.
         Synthesize your findings into a structured JSON array of 30-50 post objects reflecting these discovered topics.
         The JSON output must be enclosed in a single markdown code block like this: \`\`\`json ... \`\`\`.
-        Each object in the array must have the following properties: "id" (string), "source" (string, one of 'Web Article', 'Social Media Post', 'News Report'), "author" (string), "content" (string summary), "timestamp" (string, YYYY-MM-DD), and "link" (string URL).
+        Each object in the array must have the following properties: "id" (string), "source" (string, one of 'Web Article', 'Social Media Post', 'News Report'), "author" (string), "content" (string summary), "timestamp" (string, YYYY-MM-DD), "link" (string URL), "imageUrl" (string, optional), and "videoUrl" (string, optional).
     `;
 
     try {
@@ -82,18 +157,15 @@ export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts
                 tools: [{ googleSearch: {} }],
             }
         });
-
-        const responseText = response.text;
-        const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
-        const match = responseText.match(jsonRegex);
-
-        if (!match || !match[1]) {
-            console.error("Could not find JSON in model response:", responseText);
+        
+        let posts: Post[];
+        try {
+            posts = extractJson(response.text);
+        } catch (parseError) {
+            console.error("Could not find or parse JSON in model response:", response.text);
+            console.error("Parsing Error:", parseError);
             throw new Error("Failed to fetch real-time data. The AI model returned an invalid format.");
         }
-
-        const jsonText = match[1].trim();
-        const posts = JSON.parse(jsonText) as Post[];
 
         const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
         const sources: SearchSource[] = groundingChunks
@@ -104,8 +176,15 @@ export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts
             .filter(source => source.uri);
 
         const uniqueSources = Array.from(new Map(sources.map(s => [s.uri, s])).values());
+        
+        const postsWithMediaUrls = posts.map(post => ({
+            ...post,
+            imageUrl: post.imageUrl === 'N/A' ? undefined : post.imageUrl,
+            videoUrl: post.videoUrl === 'N/A' ? undefined : post.videoUrl,
+        }));
 
-        return { posts, sources: uniqueSources };
+
+        return { posts: postsWithMediaUrls, sources: uniqueSources };
 
     } catch (error) {
         console.error("Error in fetchRealtimePosts:", error);
@@ -118,7 +197,7 @@ export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts
 
 
 export const detectAndClusterNarratives = async (posts: Post[], context: string): Promise<Narrative[]> => {
-    const model = 'gemini-2.5-flash';
+    const model = 'gemini-flash-lite-latest';
     const postData = posts.map(p => `ID: ${p.id}, Source: ${p.source}, Author: ${p.author}, Content: "${p.content}"`).join('\n---\n');
     
     const prompt = `
@@ -126,6 +205,7 @@ export const detectAndClusterNarratives = async (posts: Post[], context: string)
         Your task is to identify and cluster distinct narratives. A narrative is a consistent theme, story, or message that multiple posts contribute to.
         Ignore isolated or irrelevant posts.
         For each distinct narrative, provide a concise title, a summary, the IDs of the posts that form the narrative, and an initial risk score.
+        Return ONLY the structured JSON array based on the schema, with no other text.
 
         Posts:
         ${postData}
@@ -142,8 +222,7 @@ export const detectAndClusterNarratives = async (posts: Post[], context: string)
             }
         });
 
-        const jsonText = response.text.trim();
-        const detectedNarratives = JSON.parse(jsonText) as Omit<Narrative, 'id' | 'status'>[];
+        const detectedNarratives = extractJson(response.text) as Omit<Narrative, 'id' | 'status'>[];
 
         return detectedNarratives.map(n => ({ ...n, id: generateId(), status: 'pending' }));
 
@@ -155,7 +234,25 @@ export const detectAndClusterNarratives = async (posts: Post[], context: string)
 
 export const enrichNarrative = async (narrative: Narrative, posts: Post[]): Promise<Narrative> => {
     const model = 'gemini-2.5-pro';
-    const postContent = posts.map(p => `Author: ${p.author}, Content: "${p.content}"`).join('\n').substring(0, 8000);
+    
+    const postsWithMediaAnalysis = await Promise.all(
+        posts.map(async (post) => {
+            if (post.imageUrl) {
+                const imageData = await urlToBase64(post.imageUrl);
+                if (imageData) {
+                    const description = await analyzeImageContent(imageData.base64, imageData.mimeType);
+                    if (description) {
+                        return { ...post, content: `${post.content}\n\n[Image Analysis: ${description}]` };
+                    }
+                }
+            } else if (post.videoUrl) {
+                return { ...post, content: `${post.content}\n\n[Video Content Present]` };
+            }
+            return post;
+        })
+    );
+
+    const postContent = postsWithMediaAnalysis.map(p => `Author: ${p.author}, Content: "${p.content}"`).join('\n').substring(0, 8000);
 
     const prompt = `
         **CONTEXT:** You are an expert analyst in information warfare defense, specializing in both the DMMI and DISARM frameworks.
@@ -185,8 +282,7 @@ export const enrichNarrative = async (narrative: Narrative, posts: Post[]): Prom
             }
         });
         
-        const jsonText = response.text.trim();
-        const enrichmentData = JSON.parse(jsonText) as {
+        const enrichmentData = extractJson(response.text) as {
             dmmiReport: DMMIReport;
             disarmAnalysis: DisarmAnalysis;
             counterOpportunities: CounterOpportunity[];
@@ -201,7 +297,7 @@ export const enrichNarrative = async (narrative: Narrative, posts: Post[]): Prom
             };
         });
 
-        return { ...narrative, ...enrichmentData, trendData, status: 'complete' };
+        return { ...narrative, ...enrichmentData, posts: postsWithMediaAnalysis, trendData, status: 'complete' };
 
     } catch (error) {
         console.error(`Error enriching narrative "${narrative.title}":`, error);

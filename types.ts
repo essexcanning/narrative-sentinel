@@ -22,6 +22,7 @@ export interface Post {
   content: string; // summary of content
   timestamp: string; // estimated date
   imageUrl?: string;
+  videoUrl?: string;
   link: string;
 }
 
@@ -67,4 +68,10 @@ export interface TaskforceItem {
         content: string;
         link: string;
     }[];
+}
+
+export interface AnalysisStep {
+  id: string;
+  label: string;
+  status: 'pending' | 'in-progress' | 'done' | 'error';
 }

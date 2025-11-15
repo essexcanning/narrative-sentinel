@@ -126,7 +126,7 @@ export const AlertIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 export const MegaphoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688 0-1.25-1.119-1.25-2.492S9.652 10.856 10.34 10.856c.688 0 1.25 1.12 1.25 2.492s-.562 2.492-1.25 2.492z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84a3.735 3.735 0 003.734-3.734 3.735 3.735 0 00-3.734-3.734m0 7.468v.016c.34.01.682.016 1.024.016s.684-.006 1.024-.016m-1.024-.016a3.734 3.734 0 01-3.734-3.734 3.734 3.734 0 013.734-3.734m0 7.468c-.34-.01-.682-.016-1.024-.016s-.684.006-1.024.016m6.092-2.126a8.956 8.956 0 01-1.018 4.25.932.932 0 01-1.724-.47c-.202-.603-.33-1.228-.38-1.868m11.244-1.132a8.956 8.956 0 00-1.018-4.25.932.932 0 00-1.724.47c-.202.603-.33 1.228-.38 1.868m-9.122-3.882a8.956 8.956 0 011.018-4.25.932.932 0 011.724.47c.202.603.33 1.228.38 1.868m-1.352-.428a8.956 8.956 0 001.018 4.25.932.932 0 001.724-.47c.202-.603.33-1.228.38-1.868" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84a3.735 3.735 0 003.734-3.734 3.735 3.735 0 00-3.734-3.734m0 7.468v.016c.34.01.682.016 1.024.016s.684-.006 1.024-.016m-1.024-.016a3.734 3.734 0 01-3.734-3.734 3.734 3.734 0 013.734-3.734m0 7.468c-.34-.01-.682-.016-1.024-.016s-.684.006-1.024.016m6.092-2.126a8.956 8.956 0 01-1.018 4.25.932.932 0 01-1.724-.47c-.202-.603-.33-1.228-.38-1.868m11.244-1.132a8.956 8.956 0 00-1.018-4.25.932.932 0 00-1.724.47c-.202.603-.33 1.228-.38 1.868m-9.122-3.882a8.956 8.956 0 011.018-4.25.932.932 0 011.724.47c.202.603.33 1.228.38 1.868m-1.352-.428a8.956 8.956 0 001.018 4.25.932.932 0 001.724-.47c.202-.603.33 1.228.38-1.868" />
     </svg>
 );
 
@@ -152,5 +152,18 @@ export const ShieldExclamationIcon: React.FC<React.SVGProps<SVGSVGElement>> = (p
 export const UserPlusIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+    </svg>
+);
+
+export const BrainCircuitIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.75c2.422 0 4.704-.712 6.643-2.016M12 21.75c-2.422 0-4.704-.712-6.643-2.016M12 21.75v-3.834M12 17.916c-3.328 0-6.037-2.618-6.037-5.833 0-1.92.926-3.663 2.39-4.774M12 17.916c3.328 0 6.037-2.618 6.037-5.833 0-1.92-.926-3.663-2.39-4.774M12 12.083c-1.657 0-3-1.343-3-3s1.343-3 3-3 3 1.343 3 3-1.343 3-3 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.61 7.306A2.25 2.25 0 0112 6.083a2.25 2.25 0 012.39 1.223m-4.78 0a2.25 2.25 0 00-2.39 1.222M12 12.083a2.25 2.25 0 01-2.39 1.223m4.78 0a2.25 2.25 0 002.39 1.222M9.61 16.86a2.25 2.25 0 01-2.39-1.223M12 12.083a2.25 2.25 0 002.39-1.223m-4.78 0c-.965 0-1.858.336-2.58.905M14.39 16.86a2.25 2.25 0 012.39-1.223m0 0c.965 0 1.858.336 2.58.905m-14.3-10.456c-1.144 1.24-1.82 2.89-1.82 4.672 0 3.215 2.71 5.833 6.037 5.833M19.79 7.306c1.144 1.24 1.82 2.89 1.82 4.672 0 3.215-2.71 5.833-6.037 5.833" />
+    </svg>
+);
+
+export const CircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
