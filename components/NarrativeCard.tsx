@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Narrative, Post } from '../types';
-import { ShareIcon, DownloadIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner } from './icons/GeneralIcons';
+import { ShareIcon, DownloadIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner, TagIcon } from './icons/GeneralIcons';
 import { ProgressRing } from './ProgressRing';
 import { Sparkline } from './Sparkline';
 import { BriefingModal } from './BriefingModal';
@@ -186,6 +186,12 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                                     {narrative.dmmiReport?.classification || `Risk Level ${narrative.riskScore}`}
                                 </span>
                             </div>
+                             {narrative.campaign && (
+                                <div className="flex items-center gap-2 mb-2 text-xs text-text-secondary">
+                                    <TagIcon className="h-4 w-4" />
+                                    <span className="font-medium bg-background-hover px-2 py-0.5 rounded-full">{narrative.campaign}</span>
+                                </div>
+                            )}
                             <h3 className="text-lg font-semibold text-text-primary">{narrative.title}</h3>
                         </div>
                         <ProgressRing status={narrative.status} />

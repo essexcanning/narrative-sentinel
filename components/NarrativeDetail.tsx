@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Narrative, Post } from '../types';
-import { ArrowLeftIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner, DownloadIcon } from './icons/GeneralIcons';
+import { ArrowLeftIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner, DownloadIcon, TagIcon } from './icons/GeneralIcons';
 import { BriefingModal } from './BriefingModal';
 import { Sparkline } from './Sparkline';
 import clsx from 'clsx';
@@ -12,6 +12,7 @@ interface NarrativeDetailProps {
     narrative: Narrative;
     onBack: () => void;
     onAssignToTaskforce: (narrative: Narrative) => Promise<void>;
+    onAssignToCampaign: (narrativeId: string, campaignName: string) => void;
 }
 
 const getRiskConfig = (score: number, classification?: string) => {
@@ -31,7 +32,7 @@ const DetailCard: React.FC<{ title: string; children: React.ReactNode }> = ({ ti
     </div>
 );
 
-export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onBack, onAssignToTaskforce }) => {
+export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onBack, onAssignToTaskforce, onAssignToCampaign }) => {
     const [isBriefingModalOpen, setIsBriefingModalOpen] = useState(false);
     const [isAssigning, setIsAssigning] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
@@ -44,6 +45,13 @@ export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onB
             await onAssignToTaskforce(narrative);
         } finally {
             setIsAssigning(false);
+        }
+    };
+
+    const handleAssignCampaign = () => {
+        const campaignName = window.prompt("Enter a name for the campaign:", narrative.campaign || "");
+        if (campaignName && campaignName.trim() !== "") {
+            onAssignToCampaign(narrative.id, campaignName.trim());
         }
     };
 
@@ -99,7 +107,15 @@ export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onB
                         Back to Dashboard
                     </button>
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <h1 className="text-3xl font-bold text-text-primary leading-tight">{narrative.title}</h1>
+                        <div className="flex-1">
+                            <h1 className="text-3xl font-bold text-text-primary leading-tight">{narrative.title}</h1>
+                            {narrative.campaign && (
+                                <div className="flex items-center gap-2 mt-2 text-text-secondary">
+                                    <TagIcon className="h-5 w-5" />
+                                    <span className="text-sm font-semibold bg-background-hover px-3 py-1 rounded-full">{narrative.campaign}</span>
+                                </div>
+                            )}
+                        </div>
                         <div className={clsx("flex items-center gap-2 flex-shrink-0 py-1 px-3 rounded-full text-sm font-semibold border", riskConfig.bg, riskConfig.label)}>
                             <span className={clsx("h-2 w-2 rounded-full", riskConfig.dot)}></span>
                             <span>{narrative.dmmiReport?.classification || `Risk Level ${narrative.riskScore}`}</span>
@@ -176,6 +192,13 @@ export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onB
                         )}
                         <DetailCard title="Actions">
                             <div className="space-y-3">
+                                 <button 
+                                    onClick={handleAssignCampaign}
+                                    className="w-full flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-background-hover text-text-primary hover:bg-background-hover/80 transition-colors"
+                                >
+                                    <TagIcon className="h-4 w-4" />
+                                    Assign to Campaign
+                                </button>
                                 <button 
                                     onClick={() => setIsBriefingModalOpen(true)}
                                     className="w-full flex items-center justify-center gap-2 text-sm font-medium px-3 py-2 rounded-md bg-background-hover text-text-primary hover:bg-background-hover/80 transition-colors"

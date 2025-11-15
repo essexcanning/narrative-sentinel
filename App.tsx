@@ -203,6 +203,18 @@ const App: React.FC = () => {
     }
   }, [addToast]);
   
+  const handleAssignToCampaign = useCallback((narrativeId: string, campaignName: string) => {
+    const updatedNarratives = narratives.map(n => 
+        n.id === narrativeId ? { ...n, campaign: campaignName } : n
+    );
+    setNarratives(updatedNarratives);
+
+    if (selectedNarrative && selectedNarrative.id === narrativeId) {
+        setSelectedNarrative(prev => prev ? { ...prev, campaign: campaignName } : null);
+    }
+    addToast({ type: 'success', message: `Tagged narrative as part of "${campaignName}" campaign.` });
+  }, [narratives, selectedNarrative, addToast]);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
   };
@@ -258,6 +270,7 @@ const App: React.FC = () => {
                     narrative={selectedNarrative}
                     onBack={handleBackToDashboard}
                     onAssignToTaskforce={handleAssignToTaskforce}
+                    onAssignToCampaign={handleAssignToCampaign}
                 />;
     }
     switch (currentPage) {

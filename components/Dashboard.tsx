@@ -93,7 +93,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ narratives, sources, isLoa
                                 </button>
                             </div>
                         </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                             {sortedNarratives.map(narrative => (
                                 <NarrativeCard 
                                   key={narrative.id} 

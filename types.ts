@@ -59,6 +59,7 @@ export interface Narrative {
   postIds: string[];
   riskScore: number;
   status: 'pending' | 'complete' | 'error';
+  campaign?: string; // New field for campaign tracking
   dmmiReport?: DMMIReport;
   disarmAnalysis?: DisarmAnalysis;
   counterOpportunities?: CounterOpportunity[];
