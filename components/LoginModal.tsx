@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { ShieldCheckIcon, LoadingSpinner, AlertIcon } from './icons/GeneralIcons';
 import { signInWithGoogle } from '../services/firebase';
+import { User } from '../types';
 
 interface LoginModalProps {
-    onLoginSuccess: () => void;
+    onLoginSuccess: (user?: User) => void;
 }
 
 export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
@@ -48,6 +50,16 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
         }
     };
 
+    const handleGuestLogin = () => {
+        const guestUser: User = {
+            id: 'guest_dev',
+            name: 'Guest Analyst',
+            email: 'guest@opennarrative.dev',
+            initials: 'GA',
+        };
+        onLoginSuccess(guestUser);
+    };
+
     return (
         <div className="fixed inset-0 bg-background/90 backdrop-blur-lg flex items-center justify-center z-50 p-4 dark">
             <div className="bg-background-card rounded-2xl shadow-2xl max-w-md w-full p-8 border border-border transform transition-all animate-fade-in-up">
@@ -87,6 +99,19 @@ export const LoginModal: React.FC<LoginModalProps> = ({ onLoginSuccess }) => {
                         )}
                         <span>{isLoading ? 'Signing in...' : 'Sign in with Google'}</span>
                     </button>
+
+                    <div className="pt-2 flex flex-col items-center">
+                         <p className="text-xs text-text-secondary mb-2">
+                            Having trouble connecting in this environment?
+                        </p>
+                        <button
+                            onClick={handleGuestLogin}
+                            disabled={isLoading}
+                            className="text-xs text-primary hover:text-primary-hover font-medium transition-colors underline decoration-dotted underline-offset-4"
+                        >
+                            Continue as Guest (Dev Mode)
+                        </button>
+                    </div>
                     
                     {error && (
                         <div className="p-4 rounded-lg bg-critical/10 border border-critical/20 flex flex-col gap-2 animate-fade-in-up">

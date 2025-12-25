@@ -2,6 +2,7 @@
 import React from 'react';
 import { TaskforceItem } from '../types';
 import { LinkIcon, ShieldExclamationIcon } from './icons/GeneralIcons';
+import { PlanRenderer } from './PlanRenderer';
 
 interface TaskforceDashboardProps {
     items: TaskforceItem[];
@@ -23,20 +24,20 @@ export const TaskforceDashboard: React.FC<TaskforceDashboardProps> = ({ items })
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {items.map(item => (
-                        <div key={item.id} className="bg-background-card rounded-lg shadow-card flex flex-col h-full min-w-0">
+                        <div key={item.id} className="bg-background-card rounded-lg shadow-card flex flex-col h-full min-w-0 border border-transparent hover:border-border transition-colors">
                             <div className="p-5 flex-grow min-w-0">
-                                <h2 className="text-lg font-semibold text-text-primary mb-3 break-words whitespace-normal">{item.narrativeTitle}</h2>
-                                <div className="bg-background p-3 rounded-lg border border-border text-sm text-text-secondary whitespace-pre-wrap break-words font-mono">
-                                    {item.assignmentBrief}
+                                <h2 className="text-lg font-semibold text-text-primary mb-3 break-words whitespace-normal leading-tight">{item.narrativeTitle}</h2>
+                                <div className="bg-background-secondary/30 p-4 rounded-lg border border-border/50">
+                                    <PlanRenderer text={item.assignmentBrief} />
                                 </div>
                             </div>
-                            <div className="border-t border-border p-5 min-w-0">
-                                <h3 className="text-sm font-semibold text-text-primary mb-2">Associated Posts ({item.posts.length})</h3>
-                                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 w-full">
+                            <div className="border-t border-border p-5 min-w-0 bg-background/50 rounded-b-lg">
+                                <h3 className="text-xs font-bold text-text-secondary uppercase tracking-wider mb-3">Associated Posts ({item.posts.length})</h3>
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 w-full custom-scrollbar">
                                     {item.posts.map((post, index) => (
-                                        <div key={index} className="text-xs bg-background p-2 rounded border border-border w-full">
-                                            <p className="text-text-secondary break-words whitespace-normal w-full">{post.content}</p>
-                                            <a href={post.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 mt-1 break-all w-full">
+                                        <div key={index} className="text-xs bg-background p-2.5 rounded border border-border w-full hover:border-primary/30 transition-colors">
+                                            <p className="text-text-secondary break-words whitespace-normal w-full line-clamp-3 mb-1">{post.content}</p>
+                                            <a href={post.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1 break-all w-full font-medium">
                                                 <LinkIcon className="h-3 w-3 flex-shrink-0" /> Source
                                             </a>
                                         </div>

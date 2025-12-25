@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Narrative, CounterOpportunity } from '../types';
-import { ArrowLeftIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner, DownloadIcon, TagIcon, BrainCircuitIcon, ChatIcon, ShieldExclamationIcon, FingerPrintIcon } from './icons/GeneralIcons';
+import { ArrowLeftIcon, LinkIcon, MegaphoneIcon, UserPlusIcon, LoadingSpinner, DownloadIcon, TagIcon, BrainCircuitIcon, ChatIcon, ShieldExclamationIcon, FingerPrintIcon, InfoIcon } from './icons/GeneralIcons';
 import { BriefingModal } from './BriefingModal';
 import { CounterActionPlanModal } from './CounterActionPlanModal';
 import { AnalystCopilot } from './AnalystCopilot';
@@ -145,6 +145,18 @@ export const NarrativeDetail: React.FC<NarrativeDetailProps> = ({ narrative, onB
                                         <span className={clsx("h-2 w-2 rounded-full", riskConfig.dot)}></span>
                                         {narrative.dmmiReport?.classification || `Risk Level ${narrative.riskScore}`}
                                     </div>
+                                    <div className="group relative flex-shrink-0">
+                                        <InfoIcon className="h-4 w-4 text-text-secondary/70 hover:text-text-primary cursor-help transition-colors" />
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-64 p-3 bg-background-card border border-border rounded shadow-lg text-xs text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                                            <p className="font-bold text-text-primary mb-1">Risk Score Calculation:</p>
+                                            <ul className="list-disc list-inside space-y-1 opacity-80">
+                                                <li><strong>DMMI:</strong> Harm Potential & Veracity</li>
+                                                <li><strong>Context:</strong> Virality & Probability</li>
+                                                <li><strong>TTPs:</strong> DISARM sophistication</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
                                     {narrative.campaign && (
                                         <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background-secondary border border-border text-xs font-medium text-text-secondary">
                                             <TagIcon className="h-3.5 w-3.5" />

@@ -161,14 +161,39 @@ const wargameSchema = {
 
 export const fetchRealtimePosts = async (inputs: AnalysisInput): Promise<{ posts: Post[], sources: SearchSource[] }> => {
     const model = 'gemini-flash-lite-latest';
+    const sourceList = inputs.sources.join(', ');
+    
     const prompt = `
         You are a research assistant. Your task is to discover the most significant online content from "${inputs.country}" within the timeframe of ${inputs.timeFrame.start} to ${inputs.timeFrame.end}.
-        Based on the user's selected Country and Time Frame, perform a Google search to find the top 5-10 most significant, controversial, or widely discussed news stories, events, and public discussions in that country.
-        For each story, find a relevant article. From the article, extract a summary, author, timestamp, and link.
-        CRITICALLY: Also extract the URL of the main representative image (imageUrl) or video (videoUrl) from the article if one exists.
-        Synthesize your findings into a structured JSON array of 30-50 post objects reflecting these discovered topics.
+        
+        **TARGET SOURCES:** ${sourceList}
+
+        **INSTRUCTIONS:**
+        Perform a Google search to find the top 5-10 most significant, controversial, or widely discussed news stories, events, and public discussions in that country.
+        
+        CRITICAL SEARCH STRATEGY:
+        - If "Reddit" is in target sources, prioritize searching for threads on site:reddit.com related to current events in ${inputs.country}.
+        - If "Telegram" is in target sources, search for public channel discussions or summaries of Telegram activity (e.g. site:t.me or "telegram channel" keywords).
+        - If "TikTok" is in target sources, search for trends or viral video descriptions related to ${inputs.country} (e.g. site:tiktok.com).
+        - If "X / Twitter" is in target sources, search for public threads or viral posts on site:twitter.com or site:x.com.
+        - If "Google News / Search" is in target sources, search general news outlets.
+        
+        For each story/discussion found:
+        1. Extract a summary, author/user/channel name, timestamp, and link.
+        2. Identify the source type (e.g., 'Reddit Thread', 'Telegram Channel', 'TikTok Trend', 'X Post', 'Web Article').
+        3. Try to find a representative image URL (imageUrl) or video URL (videoUrl).
+
+        Synthesize your findings into a structured JSON array of 30-50 post objects.
         The JSON output must be enclosed in a single markdown code block like this: \`\`\`json ... \`\`\`.
-        Each object in the array must have the following properties: "id" (string), "source" (string, one of 'Web Article', 'Social Media Post', 'News Report'), "author" (string), "content" (string summary), "timestamp" (string, YYYY-MM-DD), "link" (string URL), "imageUrl" (string, optional), and "videoUrl" (string, optional).
+        Each object in the array must have: 
+        - "id" (string)
+        - "source" (string, e.g. 'Reddit', 'Telegram', 'TikTok', 'X/Twitter', 'Web Article', 'News Report')
+        - "author" (string)
+        - "content" (string summary)
+        - "timestamp" (string, YYYY-MM-DD)
+        - "link" (string URL)
+        - "imageUrl" (string, optional)
+        - "videoUrl" (string, optional).
     `;
 
     try {
@@ -291,7 +316,7 @@ export const enrichNarrative = async (narrative: Narrative, posts: Post[]): Prom
         2.  **DISARM Analysis:** Analyze TTPs using the DISARM Red framework (Phase, Tactics, Techniques).
 
         3.  **Attribution Intelligence:**
-            - Based on the content style, timing, and source types, hypothesize the **suspected origin** (e.g., State-affiliated media, Domestic political group, Organic user).
+            - Based on the content style, timing, and source types, hypothesize the **suspected origin** (e.g., State-affiliated media', 'Domestic political group', 'Organic user').
             - Identify likely **key amplifiers** (e.g., Bot network, Influencers, Official accounts).
             - Describe the **network dynamics** (e.g., Coordinated Inauthentic Behavior, Viral organic spread).
             - Provide a **confidence score** (1-10) for this attribution assessment.

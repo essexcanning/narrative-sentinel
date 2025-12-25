@@ -5,7 +5,6 @@ import { Dashboard } from './components/Dashboard';
 import { WelcomeModal } from './components/WelcomeModal';
 import { AnalysisInput, Narrative, Post, SearchSource, Theme, Page, TaskforceItem, AnalysisStep, User, AnalysisHistoryItem } from './types';
 import { fetchRealtimePosts, detectAndClusterNarratives, enrichNarrative, generateTaskforceBrief } from './services/geminiService';
-import { fetchTwitterPosts } from './services/twitterService';
 import { Header } from './components/Header';
 import { Toast, ToastData } from './components/Toast';
 import { generateId } from './utils/generateId';
@@ -95,13 +94,9 @@ const App: React.FC = () => {
     setNarratives([]);
     setSources([]);
     
+    // Unified search: All sources are now handled via Gemini Search Grounding
     const initialSteps: AnalysisStep[] = [];
-    if (inputs.sources.includes('Google News / Search')) {
-      initialSteps.push({ id: 'google', label: `Performing Google News/Search scan for ${inputs.country}...`, status: 'pending' });
-    }
-    if (inputs.sources.includes('X / Twitter')) {
-      initialSteps.push({ id: 'twitter', label: 'Scanning X/Twitter...', status: 'pending' });
-    }
+    initialSteps.push({ id: 'search-grounding', label: `Scanning platforms for ${inputs.country}...`, status: 'pending' });
     initialSteps.push({ id: 'clustering', label: 'Clustering narratives...', status: 'pending' });
     setAnalysisSteps(initialSteps);
 
@@ -115,32 +110,18 @@ const App: React.FC = () => {
       
       setAnalysisPhase('fetching');
 
-      if (inputs.sources.includes('Google News / Search')) {
-        updateStepStatus('google', 'in-progress');
-        try {
-          const result = await fetchRealtimePosts(inputs);
-          combinedPosts.push(...result.posts);
-          combinedSources.push(...result.sources);
-          updateStepStatus('google', 'done', `Google News/Search scan complete.`);
-        } catch (e) {
-            updateStepStatus('google', 'error', `Google News/Search scan failed.`);
-            throw e;
-        }
+      // Execute unified search
+      updateStepStatus('search-grounding', 'in-progress');
+      try {
+        const result = await fetchRealtimePosts(inputs);
+        combinedPosts.push(...result.posts);
+        combinedSources.push(...result.sources);
+        updateStepStatus('search-grounding', 'done', `Multi-platform scan complete.`);
+      } catch (e) {
+        updateStepStatus('search-grounding', 'error', `Platform scan failed.`);
+        throw e;
       }
       
-      if (inputs.sources.includes('X / Twitter')) {
-         updateStepStatus('twitter', 'in-progress');
-         try {
-            const result = await fetchTwitterPosts(inputs);
-            combinedPosts.push(...result.posts);
-            combinedSources.push(...result.sources);
-            updateStepStatus('twitter', 'done', 'X/Twitter scan complete.');
-         } catch (e) {
-            updateStepStatus('twitter', 'error', 'X/Twitter scan failed.');
-            throw e;
-         }
-      }
-
       const uniqueSources = Array.from(new Map(combinedSources.map(s => [s.uri, s])).values());
       setSources(uniqueSources);
 
@@ -233,6 +214,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut();
+    setCurrentUser(null);
     // Reset app state for a clean slate
     setNarratives([]);
     setSources([]);
@@ -281,8 +263,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    // Just a placeholder callback, real auth handling is in the useEffect/listener
-    return <LoginModal onLoginSuccess={() => {}} />;
+    return <LoginModal onLoginSuccess={(user) => { if (user) setCurrentUser(user); }} />;
   }
   
   const renderPage = () => {

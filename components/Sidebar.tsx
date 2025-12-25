@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { AnalysisInput, Page, AnalysisHistoryItem } from '../types';
 import { COUNTRIES } from '../constants';
@@ -51,12 +52,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [country, setCountry] = useState('Moldova');
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  
   const [sources, setSources] = useState({
-    twitter: true,
     googleNews: true,
+    twitter: false,
+    reddit: false,
+    telegram: false,
+    tiktok: false
   });
 
-  const handleSourceChange = (name: 'twitter' | 'googleNews') => {
+  const handleSourceChange = (name: keyof typeof sources) => {
     setSources(prev => ({ ...prev, [name]: !prev[name] }));
   };
   
@@ -64,12 +69,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     e.preventDefault();
     const selectedSources = Object.entries(sources)
       .filter(([, checked]) => checked)
-      .map(([name]) => {
-        if (name === 'twitter') return 'X / Twitter';
+      .map(([name]): string | null => {
         if (name === 'googleNews') return 'Google News / Search';
+        if (name === 'twitter') return 'X / Twitter';
+        if (name === 'reddit') return 'Reddit';
+        if (name === 'telegram') return 'Telegram';
+        if (name === 'tiktok') return 'TikTok';
         return null;
       })
-      .filter((name): name is "Google News / Search" | "X / Twitter" => name !== null);
+      .filter((name): name is string => name !== null);
     
     if (selectedSources.length === 0) {
       alert("Please select at least one data source.");
@@ -135,9 +143,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <label className="block text-sm font-medium text-text-secondary mb-2 flex items-center">
               Data Sources
             </label>
-            <div className="space-y-3">
-              <CustomCheckbox id="twitter" label="X / Twitter" checked={sources.twitter} onChange={() => handleSourceChange('twitter')} />
+            <div className="space-y-3 bg-background p-3 rounded-lg border border-border">
               <CustomCheckbox id="googleNews" label="Google News / Search" checked={sources.googleNews} onChange={() => handleSourceChange('googleNews')} />
+              <CustomCheckbox id="reddit" label="Reddit" checked={sources.reddit} onChange={() => handleSourceChange('reddit')} />
+              <CustomCheckbox id="telegram" label="Telegram (Public Channels)" checked={sources.telegram} onChange={() => handleSourceChange('telegram')} />
+              <CustomCheckbox id="tiktok" label="TikTok" checked={sources.tiktok} onChange={() => handleSourceChange('tiktok')} />
+              <div className="pt-2 mt-2 border-t border-border/50">
+                  <CustomCheckbox id="twitter" label="X / Twitter" checked={sources.twitter} onChange={() => handleSourceChange('twitter')} />
+              </div>
             </div>
           </div>
         </div>

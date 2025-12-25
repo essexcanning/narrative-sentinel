@@ -218,9 +218,9 @@ export const NarrativeCard: React.FC<NarrativeCardProps> = ({ narrative, onAssig
                                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-background-card border border-border rounded shadow-lg text-xs text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                                         <p className="font-bold text-text-primary mb-1">Risk Score Calculation:</p>
                                         <ul className="list-disc list-inside space-y-1 opacity-80">
-                                            <li>DMMI: Harm Potential & Veracity</li>
-                                            <li>Virality & Probability</li>
-                                            <li>Sophistication of DISARM TTPs</li>
+                                            <li><strong>DMMI:</strong> Harm Potential & Veracity</li>
+                                            <li><strong>Context:</strong> Virality & Probability</li>
+                                            <li><strong>TTPs:</strong> DISARM sophistication</li>
                                         </ul>
                                     </div>
                                 </div>
